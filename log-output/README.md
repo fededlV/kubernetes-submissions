@@ -15,6 +15,11 @@ docker push TU_USUARIO_DOCKERHUB/log-output:1.1
 
 ## Deploy in Kubernetes
 ```
-kubectl create deployment log-output --image=TU_USUARIO_DOCKERHUB/log-output:1.1
-kubectl logs -f deployment/log-output
+kubectl apply -f manifests/deployment.yaml
+kubectl logs -f deployment/log-output-dep
+```
+
+## Clean up
+```
+kubectl delete -f manifests/deployment.yaml
 ```
