@@ -9,19 +9,25 @@ PORT=3000 go run .
 
 ## Image
 ```
-docker build -t TU_USUARIO_DOCKERHUB/todo-app:1.5 .
-docker push TU_USUARIO_DOCKERHUB/todo-app:1.5
+docker build -t fededlv/todo-app:1.6 .
+docker push fededlv/todo-app:1.6
 ```
 
-## Deploy in Kubernetes
+## Deploy in Kubernetes (k3d)
+Cluster con el puerto 80 del load balancer expuesto:
 ```
-kubectl apply -f manifests/deployment.yaml
-kubectl get pods
-kubectl logs -f deployment/todo-app-dep
+k3d cluster create --port 8081:80@loadbalancer --agents 2
 ```
 
-## Test with port-forward
+Aplicar los manifiestos (Deployment + Service ClusterIP + Ingress):
 ```
-kubectl port-forward deployment/todo-app-dep 3003:3000
+kubectl apply -f manifests/
+kubectl get pods,svc,ing
 ```
-Abrir http://localhost:3003 en el navegador.
+
+Abrir http://localhost:8081 en el navegador.
+
+## Clean up
+```
+kubectl delete -f manifests/
+```
