@@ -14,4 +14,9 @@ spec:
     spec:
       containers:
         - name: log-output
-          image: fededlv/log-output:1.1.1
+          image: fededlv/log-output:1.7
+          env:
+            - name: PORT
+              value: "3000"
+          ports:
+              - containerPort: 3000
