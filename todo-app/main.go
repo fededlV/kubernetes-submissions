@@ -1,36 +1,32 @@
 package main
 
 import (
-	"fmt"
+	"embed"
+	"io/fs"
 	"log"
-	"net"
 	"net/http"
 	"os"
 )
 
+//go:embed static
+var staticFiles embed.FS
+
 func main() {
-	// 1. Leer el puerto desde la variable de entorno, con valor por defecto
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "8080"
 	}
 
-	// 2. Definir las rutas
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Todo app running")
-	})
-
-	// 3. Abrir el puerto ANTES de anunciar que el servidor arrancó
-	listener, err := net.Listen("tcp", ":"+port)
+	static, err := fs.Sub(staticFiles, "static")
 	if err != nil {
-		log.Fatalf("could not listen on port %s: %v", port, err)
+		log.Fatal(err)
 	}
 
-	fmt.Printf("Server started in port %s\n", port)
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.FS(static)))
 
-	// 4. Servir peticiones (bloquea para siempre)
-	if err := http.Serve(listener, mux); err != nil {
+	log.Printf("Server started in port %s", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatal(err)
 	}
 }

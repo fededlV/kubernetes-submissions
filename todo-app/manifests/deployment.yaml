@@ -14,7 +14,9 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: fededlv/todo-app:1.2
+          image: fededlv/todo-app:1.6
           env:
             - name: PORT
               value: "3000"
+          ports:
+            - containerPort: 3000
