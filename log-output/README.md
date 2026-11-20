@@ -1,40 +1,42 @@
 # Log output
 
-Genera un UUID al iniciar (guardado en memoria) y lo imprime cada 5 segundos junto a un timestamp.
-Además expone un endpoint HTTP que devuelve el estado actual en JSON:
+Split into two containers running in the same pod, sharing an `emptyDir` volume:
+
+- **log-writer**: generates a random string (UUID) on startup and appends a line
+  `timestamp: random-string` to `/usr/src/app/files/output.log` every 5 seconds.
+- **log-reader**: serves the contents of that file on HTTP GET `/` (port 3000).
 
 ```
-GET /status   ->  {"timestamp":"2026-11-08T13:30:00.000Z","id":"<uuid>"}
+log-output/
+├── log-writer/    # Go app that writes the file
+├── log-reader/    # Go app that serves the file over HTTP
+└── manifests/     # deployment (2 containers + shared volume), service, ingress
 ```
-
-El puerto se toma de la variable de entorno `PORT` (por defecto 8080).
 
 ## Run locally
+Both apps must use the same file path:
 ```
-PORT=3000 go run .
-curl http://localhost:3000/status
-```
-
-## Image
-```
-docker build -t fededlv/log-output:1.7 .
-docker push fededlv/log-output:1.7
+cd log-writer && LOG_FILE=../shared/output.log go run .
+cd log-reader && LOG_FILE=../shared/output.log go run .
+curl localhost:3000
 ```
 
-## Deploy in Kubernetes (k3d)
-Crear el cluster exponiendo el puerto 80 del load balancer (si no se hizo antes):
+## Images
 ```
-k3d cluster create --port 8081:80@loadbalancer --agents 2
+docker build -t fededlv/log-output-writer:1.10 ./log-writer
+docker build -t fededlv/log-output-reader:1.10 ./log-reader
+docker push fededlv/log-output-writer:1.10
+docker push fededlv/log-output-reader:1.10
 ```
 
-Aplicar los manifiestos:
+## Deploy in Kubernetes
 ```
 kubectl apply -f manifests/
-kubectl get pods,svc,ing
-kubectl logs -f deployment/log-output-dep
+kubectl get pods                                              # READY 2/2
+kubectl logs deploy/log-output-dep -c log-writer              # writer logs
+kubectl logs deploy/log-output-dep --all-containers --prefix  # both containers
+curl http://localhost:8081
 ```
-
-Abrir http://localhost:8081/status en el navegador.
 
 ## Clean up
 ```

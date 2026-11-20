@@ -12,11 +12,34 @@ spec:
       labels:
         app: log-output
     spec:
+    # Declare the volume ONCE, at pod level
+      volumes: 
+        - name: shared-files
+          emptyDir: {}
+      # Two entries under containers = two containers in the same pod
       containers:
-        - name: log-output
-          image: fededlv/log-output:1.7
+        - name: log-writer
+          image: fededlv/log-output-writer:1.10
           env:
+            - name: LOG_FILE
+              value: /usr/src/app/files/output.log
+          # Mount the volume into the writer
+          volumeMounts:
+            - name: shared-files
+              mountPath: /usr/src/app/files
+
+        - name: log-reader
+          image: fededlv/log-output-reader:1.10
+          env:
+            - name: LOG_FILE
+              value: /usr/src/app/files/output.log
             - name: PORT
               value: "3000"
-          ports:
-              - containerPort: 3000
+          ports: 
+            - containerPort: 3000
+          
+          # Mount the same volume into the reader
+          volumeMounts:
+            - name: shared-files
+              mountPath: /usr/src/app/files
+              readOnly: true
