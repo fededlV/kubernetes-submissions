@@ -5,28 +5,40 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync/atomic"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	countFile := os.Getenv("COUNT_FILE")
+	if countFile == "" {
+		countFile = "/usr/src/app/files/pingpong.txt"
 	}
 
-	// Contador en memoria: se reinicia si el pod se reinicia.
-	var counter atomic.Int64
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	var mu sync.Mutex
+	counter := 0
+	if data, err := os.ReadFile(countFile); err == nil {
+		counter, _ = strconv.Atoi(strings.TrimSpace(string(data)))
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /pingpong", func(w http.ResponseWriter, r *http.Request) {
-		// Add devuelve el valor nuevo; restamos 1 para que la primera respuesta sea "pong 0".
-		n := counter.Add(1) - 1
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		mu.Lock()
+		n := counter
+		counter++
+		if err := os.WriteFile(countFile, []byte(strconv.Itoa(counter)), 0o644); err != nil {
+			log.Printf("failed to write count file: %v", err)
+		}
+		mu.Unlock()
 		fmt.Fprintf(w, "pong %d", n)
 	})
 
-	log.Printf("Server started in port %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatal(err)
-	}
+	log.Printf("Listening on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
